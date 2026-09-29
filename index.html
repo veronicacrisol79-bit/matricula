@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17324d">
+  <title>Matrícula Académica · UNFV</title>
+  <link rel="stylesheet" href="styles.css?v=7">
+  <script src="vendor/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js?v=7"></script>
+  <script defer src="vendor/alpine.min.js"></script>
+</head>
+<body x-data="app()" x-init="init()">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <img src="assets/unfv-logo.png" alt="Universidad Nacional Federico Villarreal" class="unfv-logo" width="849" height="325">
+        <span class="brand-divider" aria-hidden="true"></span>
+        <span class="brand-product"><strong>Sistema de Matrícula</strong><small>Ingeniería de Sistemas</small></span>
+      </div>
+      <div class="account" x-show="user">
+        <span class="avatar" x-text="profile?.nombre?.charAt(0)?.toUpperCase() || 'U'"></span>
+        <span class="account-name" x-text="profile?.nombre"></span>
+        <span class="role" x-text="role"></span>
+        <button class="plain logout" @click="logout()">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" x-cloak>
+    <div x-show="!ready" class="loading">Cargando…</div>
+    <template x-if="ready && !configured"><div class="notice error">Configura la URL y la clave pública de tu nuevo proyecto Supabase en <code>config.js</code>. Sigue las instrucciones de <code>README.md</code>.</div></template>
+    <template x-if="ready && configured && !user">
+      <section class="login-layout">
+        <div class="welcome">
+          <span class="welcome-kicker"><span class="kicker-line"></span> PORTAL ACADÉMICO UNFV</span>
+          <h1>Tu camino académico empieza aquí.</h1>
+          <p>Organiza tus cursos, consulta tu malla y matricúlate con claridad en cada periodo.</p>
+          <div class="welcome-steps"><span><b>01</b> Explora tu malla</span><span><b>02</b> Elige tus cursos</span><span><b>03</b> Confirma tu horario</span></div>
+          <div class="welcome-note">Los requisitos, horarios y vacantes se verifican al confirmar.</div>
+        </div>
+        <form class="card login-card" @submit.prevent="login()">
+          <div class="login-mark">UNFV <span>·</span> MATRÍCULA</div>
+          <h2>Inicia sesión</h2>
+          <p class="muted">Ingresa con tu correo y contraseña. Si recibiste una clave temporal, la cambiarás al entrar.</p>
+          <div x-show="error" class="notice error" role="alert" x-text="error"></div>
+          <label>Correo electrónico<input type="email" x-model="auth.email" required autocomplete="email"></label>
+          <label>Contraseña<input type="password" x-model="auth.password" required autocomplete="current-password"></label>
+          <button class="primary wide" :disabled="busy">Entrar</button>
+          <p class="form-hint">¿Aún no tienes cuenta? Solicítala a Administración. La primera vez que ingreses deberás establecer tu propia contraseña.</p>
+        </form>
+      </section>
+    </template>
+
+    <template x-if="user && profile && profile.clave_temporal">
+      <section class="password-layout">
+        <form class="card password-card" @submit.prevent="changePassword()">
+          <span class="eyebrow">PRIMER INGRESO</span>
+          <h1>Crea tu contraseña personal</h1>
+          <p class="muted">La contraseña que te dio Administración es temporal. Cámbiala ahora para continuar al sistema de matrícula.</p>
+          <div x-show="error" class="notice error" role="alert" x-text="error"></div>
+          <label>Contraseña temporal<input type="password" x-model="newPassword.current" required autocomplete="current-password"></label>
+          <label>Nueva contraseña<input type="password" x-model="newPassword.value" minlength="10" required autocomplete="new-password"></label>
+          <label>Repite la nueva contraseña<input type="password" x-model="newPassword.confirm" minlength="10" required autocomplete="new-password"></label>
+          <p class="form-hint">Usa al menos 10 caracteres y una contraseña diferente de la temporal.</p>
+          <button class="primary wide" :disabled="busy">Guardar contraseña y continuar</button>
+        </form>
+      </section>
+    </template>
+
+    <template x-if="user && profile && !profile.clave_temporal">
+      <div>
+        <div class="page-heading"><div><span class="eyebrow">PANEL ACADÉMICO</span><h1 x-text="tab === 'inicio' ? `Hola, ${profile.nombre}` : ({malla:'Malla curricular', gestion:'Gestión académica', oferta:'Cursos disponibles', matricula:'Mi matrícula', personas:'Personas y notas'}[tab] || 'Panel')"></h1><p class="muted" x-text="activePeriod ? `Periodo activo: ${activePeriod.nombre}` : 'Aún no hay un periodo activo'"></p></div><span class="period-pill" x-text="role === 'ESTUDIANTE' ? (myPlan?.nombre || 'Sin plan asignado') : role"></span></div>
+        <nav class="tabs" aria-label="Secciones">
+          <button :class="tab === 'inicio' && 'selected'" @click="tab='inicio'">Inicio</button>
+          <button :class="tab === 'malla' && 'selected'" @click="tab='malla'">Malla</button>
+          <button x-show="role === 'ADMINISTRADOR'" :class="tab === 'personas' && 'selected'" @click="tab='personas'">Personas y notas</button>
+          <button x-show="role !== 'ESTUDIANTE'" :class="tab === 'gestion' && 'selected'" @click="tab='gestion'">Docentes y secciones</button>
+          <button :class="tab === 'oferta' && 'selected'" @click="tab='oferta'">Cursos disponibles</button>
+          <button x-show="role === 'ESTUDIANTE'" :class="tab === 'matricula' && 'selected'" @click="tab='matricula'">Mi matrícula</button>
+        </nav>
+        <div x-show="error" class="notice error" role="alert" x-text="error"></div>
+        <div x-show="message" class="notice success" role="status" x-text="message"></div>
+
+        <section x-show="tab === 'inicio'">
+          <div class="stats">
+            <div class="stat card"><span>Planes de estudio</span><strong x-text="data.planes.length"></strong></div>
+            <div class="stat card"><span>Cursos</span><strong x-text="data.cursos.length"></strong></div>
+            <div class="stat card"><span>Secciones publicadas</span><strong x-text="data.secciones.filter(s => s.publicada && s.periodo_id === activePeriod?.id).length"></strong></div>
+            <div class="stat card"><span x-text="role === 'ESTUDIANTE' ? 'Créditos matriculados' : 'Matrículas activas'"></span><strong x-text="role === 'ESTUDIANTE' ? enrolledCredits : data.matriculas.filter(m => m.estado === 'ACTIVA').length"></strong></div>
+          </div>
+          <div x-show="role === 'ESTUDIANTE' && !profile.plan_id" class="notice info" role="status">Tu cuenta ya está activa como Estudiante. Pide a Administración que verifique tus datos y te asigne un plan de estudios para consultar tu malla y matricularte.</div>
+          <div x-show="data.planes.some(p => p.nombre === 'Plan DEMO de Ingeniería de Sistemas')" class="notice info" role="status">Datos de práctica: el plan y los cursos DEMO son inventados. No corresponden a la malla oficial de la UNFV.</div>
+          <div class="card guide"><h2>Para empezar</h2><ol x-show="role === 'ADMINISTRADOR'"><li>Revisa el plan y los cursos desde Malla.</li><li>Comprueba qué periodo está activo.</li><li>Crea estudiantes, asigna planes y registra las notas previas.</li></ol><ol x-show="role === 'DIRECCION'"><li>Revisa los docentes y secciones.</li><li>Programa horarios y vacantes.</li><li>Publica cada sección para que los estudiantes la vean.</li></ol><ol x-show="role === 'ESTUDIANTE'"><li>Si aún no tienes plan, solicita su asignación a Administración.</li><li>Consulta tu malla y los cursos disponibles para este periodo.</li><li>Confirma tus cursos y revisa Mi matrícula.</li></ol></div>
+        </section>
+
+        <section x-show="tab === 'malla'">
+          <div x-show="role === 'ADMINISTRADOR'" class="form-grid">
+            <form class="card" @submit.prevent="addPlan()"><h2>Nuevo plan</h2><label>Nombre<input x-model="form.plan.nombre" required placeholder="Ingeniería de Sistemas"></label><label>Año<input type="number" x-model="form.plan.anio" min="2000" max="2100" required></label><button class="primary" :disabled="busy">Crear plan</button></form>
+            <form class="card" @submit.prevent="addCourse()"><h2>Nuevo curso</h2><label>Plan<select x-model="form.curso.plan_id" required><option value="">Seleccionar</option><template x-for="p in data.planes" :key="p.id"><option :value="p.id" x-text="`${p.nombre} (${p.anio})`"></option></template></select></label><div class="two"><label>Código<input x-model="form.curso.codigo" required></label><label>Ciclo<input type="number" x-model="form.curso.ciclo" min="1" max="12" required></label></div><label>Nombre<input x-model="form.curso.nombre" required></label><label>Créditos<input type="number" x-model="form.curso.creditos" min="1" max="10" required></label><button class="primary" :disabled="busy">Agregar curso</button></form>
+            <form class="card" @submit.prevent="addRequirement()"><h2>Prerrequisito</h2><label>Curso<select x-model="form.requisito.curso_id" required><option value="">Seleccionar</option><template x-for="c in data.cursos" :key="c.id"><option :value="c.id" x-text="`${c.codigo} · ${c.nombre}`"></option></template></select></label><label>Debe aprobar antes<select x-model="form.requisito.requisito_id" required><option value="">Seleccionar</option><template x-for="c in data.cursos.filter(c => c.plan_id === course(Number(form.requisito.curso_id))?.plan_id && c.ciclo < course(Number(form.requisito.curso_id))?.ciclo)" :key="c.id"><option :value="c.id" x-text="`${c.codigo} · ${c.nombre}`"></option></template></select></label><button class="primary" :disabled="busy">Agregar requisito</button></form>
+            <form class="card" @submit.prevent="addPeriod()"><h2>Nuevo periodo</h2><label>Nombre<input x-model="form.periodo.nombre" required placeholder="2027-I"></label><label>Máximo de créditos<input type="number" x-model="form.periodo.max_creditos" min="1" max="40" required></label><button class="primary" :disabled="busy">Crear periodo</button></form>
+          </div>
+          <div x-show="role === 'ADMINISTRADOR'" class="card"><h2>Periodos</h2><div class="list"><template x-for="p in data.periodos" :key="p.id"><div class="list-row"><span x-text="`${p.nombre} · máximo ${p.max_creditos} créditos`"></span><span><span x-show="p.activo" class="badge good">Activo</span><button x-show="!p.activo" class="secondary small" :disabled="busy" @click="activatePeriod(p.id)">Activar</button></span></div></template></div></div>
+          <div class="card"><h2>Cursos por ciclo</h2><p class="muted" x-show="!data.cursos.length">Todavía no hay cursos registrados.</p><div class="table-wrap"><table x-show="data.cursos.length"><thead><tr><th>Plan</th><th>Ciclo</th><th>Código</th><th>Curso</th><th>Créditos</th><th>Prerrequisitos</th></tr></thead><tbody><template x-for="c in (role === 'ESTUDIANTE' ? myCourses : data.cursos.slice().sort((a,b) => a.ciclo - b.ciclo))" :key="c.id"><tr><td x-text="nameOf(data.planes,c.plan_id)"></td><td x-text="c.ciclo"></td><td class="mono" x-text="c.codigo"></td><td x-text="c.nombre"></td><td x-text="c.creditos"></td><td x-text="requirements(c.id)"></td></tr></template></tbody></table></div></div>
+        </section>
+
+        <section x-show="tab === 'personas' && role === 'ADMINISTRADOR'">
+          <div x-show="!data.planes.length" class="notice info" role="status">Antes de crear estudiantes, registra un plan de estudios en la sección Malla.</div>
+          <form class="card" @submit.prevent="createStudent()"><h2>Crear cuenta de estudiante</h2><p class="muted">Registra al estudiante y entrégale una contraseña temporal distinta. Al entrar, el sistema le exigirá cambiarla.</p><div class="form-grid flat"><label>Nombre completo<input x-model="newStudent.nombre" required autocomplete="off"></label><label>Código universitario<input x-model="newStudent.codigo" required autocomplete="off"></label><label>Correo electrónico<input type="email" x-model="newStudent.email" required autocomplete="off"></label><label>Plan de estudios<select x-model="newStudent.plan_id" required><option value="">Seleccionar</option><template x-for="plan in data.planes" :key="plan.id"><option :value="plan.id" x-text="`${plan.nombre} (${plan.anio})`"></option></template></select></label></div><label>Contraseña temporal<input type="password" x-model="newStudent.password" minlength="8" required autocomplete="new-password"></label><p class="form-hint">Usa al menos 8 caracteres. Debe ser única para esta persona y fácil de comunicar por un canal privado.</p><button class="primary" :disabled="busy">Crear estudiante</button></form>
+          <div x-show="createdCredentials" class="notice success credential-notice" role="status"><strong>Cuenta creada.</strong> Entrega estos datos solo al estudiante por un canal privado.<div><span>Correo:</span> <code x-text="createdCredentials?.email"></code></div><div><span>Contraseña temporal:</span> <code x-text="createdCredentials?.password"></code></div><button class="plain" @click="createdCredentials = null">Ocultar contraseña</button></div>
+          <div class="card"><h2>Cuentas y roles</h2><p class="muted">Administración crea las cuentas y asigna los planes. También puede habilitar el rol Dirección cuando corresponda.</p><div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Código</th><th>Rol</th><th>Plan</th><th>Acción</th></tr></thead><tbody><template x-for="p in data.perfiles" :key="p.id"><tr><td><input x-model="p.nombre" aria-label="Nombre"></td><td><input x-model="p.codigo" aria-label="Código"></td><td><select x-model="p.rol"><option>ESTUDIANTE</option><option>DIRECCION</option><option>ADMINISTRADOR</option></select></td><td><select x-model="p.plan_id"><option value="">Sin plan</option><template x-for="plan in data.planes" :key="plan.id"><option :value="plan.id" x-text="`${plan.nombre} (${plan.anio})`"></option></template></select></td><td><button class="secondary small" :disabled="busy" @click="update('perfiles',p.id,{nombre:p.nombre,codigo:p.codigo || null,rol:p.rol,plan_id:p.plan_id ? Number(p.plan_id) : null})">Guardar</button></td></tr></template></tbody></table></div></div>
+          <form class="card" @submit.prevent="addGrade()"><h2>Registrar nota</h2><div class="form-grid flat"><label>Estudiante<select x-model="form.nota.estudiante_id" required><option value="">Seleccionar</option><template x-for="p in data.perfiles.filter(p => p.rol === 'ESTUDIANTE')" :key="p.id"><option :value="p.id" x-text="p.nombre"></option></template></select></label><label>Curso<select x-model="form.nota.curso_id" required><option value="">Seleccionar</option><template x-for="c in data.cursos.filter(c => c.plan_id === data.perfiles.find(p => p.id === form.nota.estudiante_id)?.plan_id)" :key="c.id"><option :value="c.id" x-text="`${c.codigo} · ${c.nombre}`"></option></template></select></label><label>Periodo<select x-model="form.nota.periodo_id" required><option value="">Seleccionar</option><template x-for="p in data.periodos" :key="p.id"><option :value="p.id" x-text="p.nombre"></option></template></select></label><label>Nota<input type="number" x-model="form.nota.nota" min="0" max="20" step="0.1" required></label></div><button class="primary" :disabled="busy">Registrar nota</button></form>
+          <div class="card"><h2>Matrículas</h2><div class="table-wrap"><table><thead><tr><th>Estudiante</th><th>Curso / sección</th><th>Estado</th><th>Fecha</th></tr></thead><tbody><template x-for="m in data.matriculas" :key="m.id"><tr><td x-text="nameOf(data.perfiles,m.estudiante_id)"></td><td x-text="section(m.seccion_id) ? displaySection(section(m.seccion_id)) : '—'"></td><td x-text="m.estado"></td><td x-text="new Date(m.creada_en).toLocaleDateString('es-PE')"></td></tr></template></tbody></table></div></div>
+        </section>
+
+        <section x-show="tab === 'gestion' && role !== 'ESTUDIANTE'">
+          <div class="form-grid">
+            <form class="card" @submit.prevent="addTeacher()"><h2>Nuevo docente</h2><label>Nombre<input x-model="form.docente.nombre" required></label><label>Correo<input type="email" x-model="form.docente.correo"></label><button class="primary" :disabled="busy">Registrar docente</button></form>
+            <form class="card" @submit.prevent="addSection()"><h2>Nueva sección</h2><div class="two"><label>Periodo<select x-model="form.seccion.periodo_id" required><option value="">Seleccionar</option><template x-for="p in data.periodos" :key="p.id"><option :value="p.id" x-text="p.nombre"></option></template></select></label><label>Curso<select x-model="form.seccion.curso_id" required><option value="">Seleccionar</option><template x-for="c in data.cursos" :key="c.id"><option :value="c.id" x-text="`${c.codigo} · ${c.nombre}`"></option></template></select></label></div><div class="two"><label>Sección<input x-model="form.seccion.codigo" required></label><label>Docente<select x-model="form.seccion.docente_id"><option value="">Sin asignar</option><template x-for="d in data.docentes" :key="d.id"><option :value="d.id" x-text="d.nombre"></option></template></select></label></div><div class="three"><label>Día<select x-model="form.seccion.dia"><template x-for="n in [1,2,3,4,5,6,7]" :key="n"><option :value="n" x-text="day(n)"></option></template></select></label><label>Desde<input type="time" x-model="form.seccion.inicio" required></label><label>Hasta<input type="time" x-model="form.seccion.fin" required></label></div><div class="three"><label>Aula<input x-model="form.seccion.aula"></label><label>Laboratorio<input x-model="form.seccion.laboratorio"></label><label>Vacantes<input type="number" x-model="form.seccion.vacantes" min="1" max="500" required></label></div><button class="primary" :disabled="busy">Crear sección</button></form>
+          </div>
+          <div class="card"><h2>Programación</h2><div class="table-wrap"><table><thead><tr><th>Periodo</th><th>Curso</th><th>Docente</th><th>Horario</th><th>Ambiente</th><th>Vacantes</th><th>Estado</th></tr></thead><tbody><template x-for="s in data.secciones" :key="s.id"><tr><td x-text="nameOf(data.periodos,s.periodo_id)"></td><td x-text="displaySection(s)"></td><td x-text="nameOf(data.docentes,s.docente_id)"></td><td x-text="`${day(s.dia)} ${s.inicio.slice(0,5)}–${s.fin.slice(0,5)}`"></td><td x-text="s.laboratorio || s.aula || '—'"></td><td x-text="s.vacantes"></td><td><button class="secondary small" :disabled="busy" @click="update('secciones',s.id,{publicada:!s.publicada},s.publicada ? 'Sección ocultada' : 'Sección publicada')" x-text="s.publicada ? 'Publicada · Ocultar' : 'Publicar'"></button></td></tr></template></tbody></table></div></div>
+        </section>
+
+        <section x-show="tab === 'oferta'">
+          <div class="section-intro">
+            <h2>Cursos disponibles para matrícula</h2>
+            <p class="muted">Aquí aparecen los cursos publicados para el periodo activo. Cada sección es un grupo de un curso con horario, docente y vacantes. Dirección la programa y publica; el estudiante puede matricularse si cumple los requisitos y hay vacantes.</p>
+          </div>
+          <div class="cards">
+            <template x-for="s in (role === 'ESTUDIANTE' ? offers : data.secciones.filter(s => s.publicada && s.periodo_id === activePeriod?.id))" :key="s.id">
+              <article class="card offer">
+                <div class="offer-top"><span class="badge" x-text="course(s.curso_id)?.codigo"></span><span class="muted" x-text="`${course(s.curso_id)?.creditos || 0} créditos`"></span></div>
+                <h3 x-text="course(s.curso_id)?.nombre"></h3>
+                <p x-text="`Sección ${s.codigo} · ${nameOf(data.docentes,s.docente_id)}`"></p>
+                <div class="offer-details"><span x-text="`${day(s.dia)} · ${s.inicio.slice(0,5)} a ${s.fin.slice(0,5)}`"></span><span x-text="s.laboratorio || s.aula || 'Ambiente pendiente'"></span><span x-text="`Vacantes: ${remaining(s)} de ${s.vacantes}`"></span></div>
+                <p class="form-hint" x-text="`Prerrequisitos: ${requirements(s.curso_id)}`"></p>
+                <button x-show="role === 'ESTUDIANTE'" class="primary wide" :disabled="busy || remaining(s) <= 0 || myEnrollments.some(m => section(m.seccion_id)?.curso_id === s.curso_id)" @click="enroll(s.id)" x-text="myEnrollments.some(m => section(m.seccion_id)?.curso_id === s.curso_id) ? 'Ya matriculado' : 'Matricularme'"></button>
+              </article>
+            </template>
+          </div>
+          <p class="empty" x-show="!(role === 'ESTUDIANTE' ? offers : data.secciones.filter(s => s.publicada && s.periodo_id === activePeriod?.id)).length" x-text="!activePeriod ? 'Aún no hay un periodo activo. Administración debe crearlo y activarlo en Malla curricular.' : role === 'ESTUDIANTE' && !myPlan ? 'Todavía no tienes un plan de estudios asignado. Solicítalo a Administración.' : role === 'ESTUDIANTE' ? 'Aún no hay cursos publicados de tu plan para este periodo.' : 'Todavía no hay cursos publicados para este periodo. Dirección debe crear las secciones en Gestión académica y pulsar Publicar.'"></p>
+        </section>
+
+        <section x-show="tab === 'matricula' && role === 'ESTUDIANTE'"><div class="summary card"><div><span class="eyebrow">RESUMEN</span><h2>Mi horario</h2></div><strong x-text="`${enrolledCredits} / ${activePeriod?.max_creditos || 0} créditos`"></strong></div><div class="card"><h2>Cursos matriculados</h2><p class="muted" x-show="!myEnrollments.length">Todavía no te has matriculado en este periodo.</p><div class="table-wrap"><table x-show="myEnrollments.length"><thead><tr><th>Curso</th><th>Horario</th><th>Ambiente</th><th>Créditos</th><th></th></tr></thead><tbody><template x-for="m in myEnrollments" :key="m.id"><tr><td x-text="displaySection(section(m.seccion_id))"></td><td x-text="`${day(section(m.seccion_id)?.dia)} ${section(m.seccion_id)?.inicio.slice(0,5)}–${section(m.seccion_id)?.fin.slice(0,5)}`"></td><td x-text="section(m.seccion_id)?.laboratorio || section(m.seccion_id)?.aula || '—'"></td><td x-text="course(section(m.seccion_id)?.curso_id)?.creditos"></td><td><button class="danger small" :disabled="busy" @click="withdraw(m.id)">Retirarme</button></td></tr></template></tbody></table></div></div><div class="card"><h2>Notas registradas</h2><div class="list"><template x-for="n in data.notas.filter(n => n.estudiante_id === user.id)" :key="n.id"><div class="list-row"><span x-text="`${course(n.curso_id)?.nombre || 'Curso'} · ${nameOf(data.periodos,n.periodo_id)}`"></span><strong x-text="n.nota"></strong></div></template><p class="muted" x-show="!data.notas.length">Aún no hay notas registradas.</p></div></div></section>
+      </div>
+    </template>
+  </main>
+</body>
+</html>
