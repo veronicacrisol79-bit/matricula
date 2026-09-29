@@ -6,7 +6,7 @@ Para entender cada archivo, cada módulo y el recorrido completo de una matrícu
 
 ## Qué hace
 
-- **Administrador:** crea planes de estudio, cursos, prerrequisitos y periodos; asigna roles a usuarios existentes; registra notas y consulta matrículas.
+- **Administrador:** crea y corrige planes, cursos, prerrequisitos, periodos, docentes, secciones y notas; asigna roles y consulta matrículas.
 - **Dirección:** registra docentes y secciones, horarios, aulas, laboratorios y vacantes; publica los cursos disponibles para matrícula.
 - **Estudiante:** consulta su malla y los cursos disponibles, se matricula, se retira y ve su horario y notas.
 - **Administración crea las cuentas** con una contraseña temporal única y asigna el plan. El estudiante cambia la contraseña obligatoriamente en su primer ingreso. El registro público debe permanecer deshabilitado en Supabase.
@@ -28,6 +28,7 @@ Para entender cada archivo, cada módulo y el recorrido completo de una matrícu
    ```
 
 6. Si la base ya tiene el esquema anterior, ejecuta [`migracion-clave-temporal.sql`](migracion-clave-temporal.sql) una sola vez; en una base nueva el cambio ya está en `schema.sql`. En `anfishncoxydlojunwvf` la migración ya está aplicada.
+   Si la base existía antes de habilitar la corrección completa, ejecuta también [`migracion-correcciones.sql`](migracion-correcciones.sql) una sola vez. En `anfishncoxydlojunwvf` ya está aplicada; una base nueva recibe estas validaciones desde `schema.sql`.
 7. Publica [`supabase/functions/gestionar-cuentas/index.ts`](supabase/functions/gestionar-cuentas/index.ts) como Edge Function `gestionar-cuentas`. Usa la autenticación de usuario de `@supabase/server`; en la configuración de la función deja desactivada la opción heredada **Verify JWT with legacy secret**. En `anfishncoxydlojunwvf` ya está publicada. La función valida el rol Administrador en la base y usa la clave secreta solo dentro de Supabase; nunca la pongas en el navegador. La opción «crear estudiante» confirma el correo bajo responsabilidad del administrador, quien debe comprobar la dirección y entregar la contraseña de forma privada.
 8. Sirve esta carpeta con un servidor HTTP estático, por ejemplo `python -m http.server 8080`, y abre `http://localhost:8080`. Abrir `index.html` con `file://` no es recomendable.
 

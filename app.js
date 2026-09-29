@@ -19,6 +19,8 @@ window.app = function () {
     newStudent: { nombre: '', codigo: '', email: '', plan_id: '', password: '' },
     createdCredentials: null,
     user: null, profile: null, tab: 'inicio',
+    drafts: { planes: {}, cursos: {}, periodos: {}, docentes: {} },
+    editingSection: null, editingGrade: null,
     data: { planes: [], cursos: [], requisitos: [], perfiles: [], periodos: [], docentes: [], secciones: [], notas: [], matriculas: [], cupos: [] },
     form: {
       plan: { nombre: '', anio: new Date().getFullYear() },
@@ -72,7 +74,14 @@ window.app = function () {
       }
       finally { this.busy = false; }
     },
-    async logout() { await db.auth.signOut(); this.user = null; this.profile = null; this.tab = 'inicio'; this.createdCredentials = null; this.newPassword = { current: '', value: '', confirm: '' }; },
+    async logout() {
+      await db.auth.signOut();
+      this.user = null; this.profile = null; this.tab = 'inicio';
+      this.createdCredentials = null; this.editingSection = null; this.editingGrade = null;
+      this.newPassword = { current: '', value: '', confirm: '' };
+      for (const table of Object.keys(this.data)) this.data[table] = [];
+      for (const table of Object.keys(this.drafts)) this.drafts[table] = {};
+    },
     async changePassword() {
       this.error = ''; this.message = '';
       if (this.newPassword.value !== this.newPassword.confirm) { this.error = 'Las contraseñas nuevas no coinciden.'; return; }
@@ -111,6 +120,9 @@ window.app = function () {
         if (r.error) this.error = `${tables[i]}: ${r.error.message}`;
         else this.data[tables[i] === 'prerrequisitos' ? 'requisitos' : tables[i]] = r.data || [];
       });
+      for (const table of ['planes', 'cursos', 'periodos', 'docentes']) {
+        this.drafts[table] = Object.fromEntries(this.data[table].map(row => [row.id, { ...row }]));
+      }
       const cupos = await db.rpc('cupos');
       if (cupos.error) this.error = `cupos: ${cupos.error.message}`;
       else this.data.cupos = cupos.data || [];
@@ -129,15 +141,134 @@ window.app = function () {
     async update(table, id, changes, success = 'Actualizado') {
       this.busy = true; this.error = ''; this.message = '';
       try {
-        const { error } = await db.from(table).update(changes).eq('id', id);
+        const { error } = await db.from(table).update(changes).eq('id', id).select('id').single();
         if (error) throw error;
         this.message = success;
         await this.refresh();
-      } catch (e) { this.error = e.message; }
+        return true;
+      } catch (e) { this.error = e.code === '23505' ? 'Ya existe otro registro con esos datos.' : e.message; return false; }
       finally { this.busy = false; }
     },
     addPlan() { this.save('planes', { nombre: this.form.plan.nombre.trim(), anio: Number(this.form.plan.anio) }, 'Plan creado'); },
     addCourse() { const f = this.form.curso; this.save('cursos', { plan_id: Number(f.plan_id), codigo: f.codigo.trim().toUpperCase(), nombre: f.nombre.trim(), ciclo: Number(f.ciclo), creditos: Number(f.creditos) }, 'Curso creado'); },
+    savePlanChanges(plan) {
+      const draft = this.drafts.planes[plan.id];
+      const nombre = draft.nombre.trim();
+      const anio = Number(draft.anio);
+      if (!nombre || !Number.isInteger(anio) || anio < 2000 || anio > 2100) {
+        this.error = 'Escribe un nombre y un año válido para el plan.'; return;
+      }
+      return this.update('planes', plan.id, { nombre, anio }, 'Plan actualizado');
+    },
+    saveCourseChanges(course) {
+      const draft = this.drafts.cursos[course.id];
+      const plan_id = Number(draft.plan_id);
+      const codigo = draft.codigo.trim().toUpperCase();
+      const nombre = draft.nombre.trim();
+      const ciclo = Number(draft.ciclo);
+      const creditos = Number(draft.creditos);
+      if (!this.data.planes.some(p => p.id === plan_id) || !codigo || !nombre ||
+          !Number.isInteger(ciclo) || ciclo < 1 || ciclo > 12 ||
+          !Number.isInteger(creditos) || creditos < 1 || creditos > 10) {
+        this.error = 'Revisa plan, código, nombre, ciclo y créditos del curso.'; return;
+      }
+      const invalidRequirement = this.data.requisitos.some(r => {
+        const dependent = r.curso_id === course.id ? { plan_id, ciclo } : this.course(r.curso_id);
+        const required = r.requisito_id === course.id ? { plan_id, ciclo } : this.course(r.requisito_id);
+        return (r.curso_id === course.id || r.requisito_id === course.id) &&
+          (dependent.plan_id !== required.plan_id || required.ciclo >= dependent.ciclo);
+      });
+      if (invalidRequirement) {
+        this.error = 'El cambio dejaría un prerrequisito fuera del plan o del ciclo anterior.'; return;
+      }
+      const hasGrade = this.data.notas.some(n => n.curso_id === course.id);
+      const hasEnrollment = this.data.matriculas.some(m => m.estado === 'ACTIVA' && this.section(m.seccion_id)?.curso_id === course.id);
+      if ((hasGrade && plan_id !== course.plan_id) ||
+          (hasEnrollment && (plan_id !== course.plan_id || creditos !== course.creditos))) {
+        this.error = 'Este curso ya tiene notas o matrículas. Puedes corregir código, nombre y ciclo, pero no cambiar su plan ni los créditos de matrículas activas.'; return;
+      }
+      return this.update('cursos', course.id, { plan_id, codigo, nombre, ciclo, creditos }, 'Curso actualizado');
+    },
+    savePeriodChanges(period) {
+      const draft = this.drafts.periodos[period.id];
+      const nombre = draft.nombre.trim();
+      const max_creditos = Number(draft.max_creditos);
+      if (!nombre || !Number.isInteger(max_creditos) || max_creditos < 1 || max_creditos > 40) {
+        this.error = 'Revisa el nombre y el máximo de créditos del periodo.'; return;
+      }
+      return this.update('periodos', period.id, { nombre, max_creditos }, 'Periodo actualizado');
+    },
+    saveTeacherChanges(teacher) {
+      const draft = this.drafts.docentes[teacher.id];
+      const nombre = draft.nombre.trim();
+      const correo = draft.correo?.trim() || null;
+      if (!nombre || (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo))) {
+        this.error = 'Revisa el nombre y el correo del docente.'; return;
+      }
+      return this.update('docentes', teacher.id, { nombre, correo }, 'Docente actualizado');
+    },
+    editSection(section) { this.editingSection = { ...section }; },
+    async saveSectionChanges() {
+      const draft = this.editingSection;
+      if (!draft) return;
+      const changes = {
+        periodo_id: Number(draft.periodo_id), curso_id: Number(draft.curso_id),
+        docente_id: draft.docente_id ? Number(draft.docente_id) : null,
+        codigo: draft.codigo.trim().toUpperCase(), dia: Number(draft.dia),
+        inicio: draft.inicio, fin: draft.fin, aula: draft.aula?.trim() || null,
+        laboratorio: draft.laboratorio?.trim() || null,
+        vacantes: Number(draft.vacantes), publicada: Boolean(draft.publicada)
+      };
+      if (!this.data.periodos.some(p => p.id === changes.periodo_id) ||
+          !this.data.cursos.some(c => c.id === changes.curso_id) ||
+          (changes.docente_id && !this.data.docentes.some(d => d.id === changes.docente_id)) ||
+          !changes.codigo || !Number.isInteger(changes.dia) || changes.dia < 1 || changes.dia > 7 ||
+          !changes.inicio || !changes.fin || changes.inicio >= changes.fin ||
+          !Number.isInteger(changes.vacantes) || changes.vacantes < 1 || changes.vacantes > 500) {
+        this.error = 'Revisa periodo, curso, docente, código, horario y vacantes de la sección.'; return;
+      }
+      const original = this.section(draft.id);
+      if (!original) { this.error = 'La sección ya no existe. Actualiza la página.'; return; }
+      const hasEnrollment = this.data.matriculas.some(m => m.seccion_id === draft.id && m.estado === 'ACTIVA');
+      const structuralFields = ['periodo_id', 'curso_id', 'codigo', 'dia', 'inicio', 'fin', 'vacantes', 'publicada'];
+      if (hasEnrollment && structuralFields.some(field => {
+        const current = field === 'inicio' || field === 'fin' ? String(original[field]).slice(0, 5) : String(original[field]);
+        const next = field === 'inicio' || field === 'fin' ? String(changes[field]).slice(0, 5) : String(changes[field]);
+        return current !== next;
+      })) {
+        this.error = 'Esta sección tiene matrículas activas. Solo puedes corregir docente, aula o laboratorio.'; return;
+      }
+      if (await this.update('secciones', draft.id, changes, 'Sección actualizada')) this.editingSection = null;
+    },
+    editGrade(grade) { this.editingGrade = { ...grade }; },
+    async saveGradeChanges() {
+      const draft = this.editingGrade;
+      if (!draft) return;
+      const estudiante_id = draft.estudiante_id;
+      const curso_id = Number(draft.curso_id);
+      const periodo_id = Number(draft.periodo_id);
+      const nota = Number(draft.nota);
+      const student = this.data.perfiles.find(p => p.id === estudiante_id && p.rol === 'ESTUDIANTE');
+      if (!student || !this.data.cursos.some(c => c.id === curso_id && c.plan_id === student.plan_id) ||
+          !this.data.periodos.some(p => p.id === periodo_id) || draft.nota === '' || draft.nota === null ||
+          !Number.isFinite(nota) || nota < 0 || nota > 20) {
+        this.error = 'Revisa estudiante, curso, periodo y nota.'; return;
+      }
+      if (await this.update('notas', draft.id, { estudiante_id, curso_id, periodo_id, nota }, 'Nota actualizada')) this.editingGrade = null;
+    },
+    async removeRequirement(requirement) {
+      if (!confirm('¿Quitar este prerrequisito? Puedes agregar el correcto después.')) return;
+      this.busy = true; this.error = ''; this.message = '';
+      try {
+        const { error } = await db.from('prerrequisitos').delete()
+          .eq('curso_id', requirement.curso_id).eq('requisito_id', requirement.requisito_id)
+          .select('curso_id').single();
+        if (error) throw error;
+        this.message = 'Prerrequisito quitado';
+        await this.refresh();
+      } catch (e) { this.error = e.message; }
+      finally { this.busy = false; }
+    },
     addRequirement() { const f = this.form.requisito; this.save('prerrequisitos', { curso_id: Number(f.curso_id), requisito_id: Number(f.requisito_id) }, 'Prerrequisito agregado'); },
     addPeriod() { const f = this.form.periodo; this.save('periodos', { nombre: f.nombre.trim(), max_creditos: Number(f.max_creditos) }, 'Periodo creado'); },
     activatePeriod(id) { this.rpc('activar_periodo', { p_periodo_id: id }, 'Periodo activado'); },

@@ -6,8 +6,8 @@ Una aplicación de matrícula con tres tipos de usuario:
 
 | Rol | Qué hace |
 | --- | --- |
-| Administrador | Crea planes, cursos, requisitos y periodos; asigna roles y registra notas. |
-| Dirección | Organiza docentes, secciones, horarios, aulas, laboratorios y vacantes. |
+| Administrador | Crea y corrige planes, cursos, requisitos, periodos, docentes, secciones y notas; asigna roles. |
+| Dirección | Organiza y corrige docentes, secciones, horarios, aulas, laboratorios y vacantes. |
 | Estudiante | Consulta su plan, elige secciones, se retira y ve su horario. |
 
 Un **plan de estudios** es la malla de una carrera y un año. Un **curso** pertenece a un plan y un ciclo. Una **sección** es un grupo concreto de un curso en un periodo, con horario, docente y vacantes. Una **matrícula** une a un estudiante con una sección. En **Cursos disponibles** se muestran las secciones publicadas para el periodo activo; Dirección las programa y publica en **Gestión académica**.

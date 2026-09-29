@@ -37,7 +37,7 @@ Usuario → index.html + Alpine.js → app.js → Supabase
 
 Contiene la cabecera, el logo, formularios, tablas, tarjetas y pestañas. Carga las bibliotecas, `config.js`, `app.js` y `styles.css`. En `<body x-data="app()" x-init="init()">`, Alpine crea el estado de la aplicación y ejecuta la carga inicial.
 
-La pantalla tiene tres situaciones principales: inicio de sesión; cambio obligatorio de contraseña temporal; y panel de trabajo. En el panel, **Inicio** muestra cifras, **Malla** muestra planes y cursos, **Personas y notas** permite la gestión del administrador, **Docentes y secciones** prepara horarios, **Cursos disponibles** muestra lo publicado y **Mi matrícula** muestra las inscripciones del estudiante.
+La pantalla tiene tres situaciones principales: inicio de sesión; cambio obligatorio de contraseña temporal; y panel de trabajo. En el panel, **Inicio** muestra cifras, **Malla** deja al administrador corregir planes, cursos, prerrequisitos y periodos, **Personas y notas** gestiona cuentas y permite corregir notas, **Docentes y secciones** permite corregir docentes y horarios, **Cursos disponibles** muestra lo publicado y **Mi matrícula** muestra las inscripciones del estudiante.
 
 Algunas instrucciones de Alpine que conviene mostrar en clase:
 
@@ -79,7 +79,7 @@ La función `app()` crea un objeto con datos, estado y acciones. Los grupos más
 | Sesión | `init`, `enter`, `login`, `logout` | Recuperan la sesión, leen el perfil y permiten entrar o salir. |
 | Cuentas | `createStudent`, `changePassword` | Llaman a la Edge Function para crear un estudiante o sustituir su contraseña temporal. |
 | Lectura | `refresh` | Lee las tablas en paralelo y consulta la función `cupos`; RLS decide qué filas puede ver cada usuario. |
-| Escritura simple | `save`, `update`, `addPlan`, `addCourse`, `addRequirement`, `addPeriod`, `addTeacher`, `addSection`, `addGrade` | Guardan los formularios y luego actualizan la pantalla. |
+| Escritura simple | `save`, `update`, `addPlan`, `addCourse`, `savePlanChanges`, `saveCourseChanges`, `savePeriodChanges`, `saveTeacherChanges`, `saveSectionChanges`, `saveGradeChanges` | Crean o corrigen registros y luego actualizan la pantalla. |
 | Operaciones con reglas | `rpc`, `activatePeriod`, `enroll`, `withdraw` | Invocan funciones SQL para operaciones que requieren comprobaciones y transacciones. |
 
 Ejemplo: al pulsar **Matricularme**, el HTML llama a `enroll(s.id)`. `app.js` llama a la función SQL `inscribir` y, si todo sale bien, ejecuta `refresh()` para mostrar la matrícula actualizada.
@@ -136,6 +136,8 @@ La función usa la clave secreta **en el servidor**. `app.js` solo le envía la 
 `datos-demo.sql` inserta un plan inventado, cinco cursos, dos requisitos, un periodo, dos docentes y cinco secciones. Usa `on conflict ... do nothing`, de modo que repetirlo no duplica estos registros. No crea cuentas ni matrículas.
 
 `migracion-clave-temporal.sql` añadió el cambio obligatorio de contraseña a una base que ya existía. `ajuste-permisos.sql` corrige permisos de funciones en instalaciones anteriores. En una base nueva, basta `schema.sql`; estos archivos de migración **no se ejecutan otra vez** sobre el proyecto actual.
+
+`migracion-correcciones.sql` añadió cuatro validaciones al proyecto actual: un curso con notas no cambia de plan; una sección con matrículas activas no cambia de curso, horario, vacantes ni publicación; no se puede bajar el límite de créditos de un periodo por debajo de matrículas existentes; y una nota aprobatoria no se quita si es el único requisito que sostiene una matrícula activa. También se comprueba que al cambiar el ciclo de un curso sus prerrequisitos sigan siendo de ciclos anteriores. Una base nueva ya incluye estas reglas en `schema.sql`.
 
 `vendor/alpine.min.js` actualiza la interfaz. `vendor/supabase.js` conecta con Auth, tablas y funciones de Supabase. Los archivos `*-LICENSE` contienen sus licencias. No hay React, Next.js, compilación ni servidor Node para servir la página.
 

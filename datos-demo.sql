@@ -11,12 +11,16 @@ declare
   v_docente_a bigint;
   v_docente_b bigint;
 begin
-  insert into public.planes (nombre, anio)
-  values ('Plan DEMO de Ingeniería de Sistemas', 2026)
-  on conflict (nombre, anio) do nothing;
+  -- Si el plan DEMO fue renombrado desde la aplicación, conserva su ID.
+  select min(plan_id) into v_plan_id from public.cursos where codigo = 'DEM-MAT101';
+  if v_plan_id is null then
+    insert into public.planes (nombre, anio)
+    values ('Plan DEMO de Ingeniería de Sistemas', 2026)
+    on conflict (nombre, anio) do nothing;
 
-  select id into strict v_plan_id from public.planes
-  where nombre = 'Plan DEMO de Ingeniería de Sistemas' and anio = 2026;
+    select id into strict v_plan_id from public.planes
+    where nombre = 'Plan DEMO de Ingeniería de Sistemas' and anio = 2026;
+  end if;
 
   insert into public.cursos (plan_id, codigo, nombre, ciclo, creditos)
   values
@@ -83,7 +87,7 @@ commit;
 
 -- Recuento del ejemplo para verificarlo después de ejecutar el archivo.
 select
-  (select count(*) from public.planes where nombre = 'Plan DEMO de Ingeniería de Sistemas' and anio = 2026) as planes_demo,
+  (select count(distinct plan_id) from public.cursos where codigo like 'DEM-%') as planes_demo,
   (select count(*) from public.cursos where codigo like 'DEM-%') as cursos_demo,
   (select count(*) from public.prerrequisitos r join public.cursos c on c.id = r.curso_id where c.codigo like 'DEM-%') as prerrequisitos_demo,
   (select count(*) from public.periodos where nombre = 'DEMO-2026-II' and activo) as periodos_demo_activos,
