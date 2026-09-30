@@ -204,5 +204,6 @@ th { color: #8a817a; }
 .ts-wrapper .ts-dropdown .option.active { color: var(--orange-dark); background: #fff0e4; }
 .ts-wrapper .ts-dropdown .no-results { padding: .75rem; color: var(--muted); }
 .table-wrap .ts-wrapper { min-width: 160px; }
+.table-course-name { display: block; margin-top: .22rem; color: #625c56; font-size: .78rem; line-height: 1.35; }
 .elective-tag { display: inline-block; align-self: flex-start; margin: .3rem 0 .6rem; padding: .3rem .55rem; border-radius: 7px; background: #fff0e4; color: var(--orange-dark) !important; font-size: .75rem !important; font-weight: 750; }
 @media (max-width: 650px) { .table-tools { grid-template-columns: 1fr; } .table-footer { align-items: flex-start; flex-direction: column; } }

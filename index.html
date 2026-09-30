@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#ec7028">
   <title>Matrícula Académica · UNFV</title>
   <link rel="stylesheet" href="vendor/tom-select.min.css">
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
   <script src="vendor/supabase.js"></script>
   <script src="config.js"></script>
   <script src="vendor/tom-select.min.js"></script>
-  <script src="app.js?v=11"></script>
-  <script src="search-selects.js?v=11"></script>
+  <script src="app.js?v=12"></script>
+  <script src="search-selects.js?v=12"></script>
   <script defer src="vendor/alpine.min.js"></script>
 </head>
 <body x-data="app()" x-init="init()">
@@ -129,9 +129,23 @@
           </div>
           <div x-show="role === 'ADMINISTRADOR'" class="card">
             <h2>Prerrequisitos registrados</h2>
-            <p class="muted">Si un requisito está equivocado, quítalo y agrega el correcto en el formulario de arriba.</p>
-            <div class="list"><template x-for="r in data.requisitos" :key="`${r.curso_id}-${r.requisito_id}`"><div class="list-row"><span x-text="`${course(r.curso_id)?.codigo} requiere ${course(r.requisito_id)?.codigo}`"></span><button class="danger small" :disabled="busy" @click="removeRequirement(r)">Quitar</button></div></template></div>
-            <p class="muted" x-show="!data.requisitos.length">Aún no hay prerrequisitos.</p>
+            <p class="muted">Busca el curso o su requisito. Si una relación está equivocada, quítala y agrega la correcta en el formulario de arriba.</p>
+            <div class="table-tools">
+              <label>Buscar curso o requisito<input type="search" x-model="lists.requisitos.search" @input="resetPage('requisitos')" placeholder="Código o nombre"></label>
+              <label>Plan<select x-model="lists.requisitos.plan" @change="resetPage('requisitos')"><option value="">Todos los planes</option><template x-for="p in data.planes" :key="p.id"><option :value="p.id" x-text="`${p.nombre} (${p.anio})`"></option></template></select></label>
+              <label>Ciclo del curso<select x-model="lists.requisitos.ciclo" @change="resetPage('requisitos')"><option value="">Todos los ciclos</option><template x-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n"><option :value="n" x-text="`Ciclo ${n}`"></option></template></select></label>
+            </div>
+            <div class="table-wrap"><table><thead><tr><th>Plan</th><th>Ciclo</th><th>Curso que llevarás</th><th>Debes aprobar antes</th><th>Acción</th></tr></thead><tbody>
+              <template x-for="r in pageRows('requisitos')" :key="`${r.curso_id}-${r.requisito_id}`"><tr>
+                <td x-text="nameOf(data.planes,course(r.curso_id)?.plan_id)"></td>
+                <td x-text="course(r.curso_id)?.ciclo"></td>
+                <td><strong class="mono" x-text="course(r.curso_id)?.codigo"></strong><span class="table-course-name" x-text="course(r.curso_id)?.nombre"></span></td>
+                <td><strong class="mono" x-text="course(r.requisito_id)?.codigo"></strong><span class="table-course-name" x-text="course(r.requisito_id)?.nombre"></span></td>
+                <td><button class="danger small" :disabled="busy" @click="removeRequirement(r)">Quitar</button></td>
+              </tr></template>
+            </tbody></table></div>
+            <p class="empty" x-show="!filteredRows('requisitos').length" x-text="data.requisitos.length ? 'No hay prerrequisitos que coincidan con los filtros.' : 'Aún no hay prerrequisitos registrados.'"></p>
+            <div class="table-footer"><span x-text="pageSummary('requisitos')"></span><div class="page-actions"><button class="secondary small" :disabled="currentPage('requisitos') === 1" @click="movePage('requisitos',-1)">Anterior</button><span x-text="`Página ${currentPage('requisitos')} de ${pageCount('requisitos')}`"></span><button class="secondary small" :disabled="currentPage('requisitos') === pageCount('requisitos')" @click="movePage('requisitos',1)">Siguiente</button></div></div>
           </div>
           <div x-show="role === 'ADMINISTRADOR'" class="card">
             <h2>Periodos</h2>

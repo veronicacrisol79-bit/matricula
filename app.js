@@ -28,6 +28,7 @@ window.app = function () {
       planes: { search: '', page: 1, size: 10 },
       periodos: { search: '', page: 1, size: 10 },
       cursos: { search: '', plan: '', ciclo: '', tipo: '', page: 1, size: 10 },
+      requisitos: { search: '', plan: '', ciclo: '', page: 1, size: 10 },
       perfiles: { search: '', rol: 'ESTUDIANTE', plan: '', periodo: '', seccion: '', page: 1, size: 10 },
       notas: { search: '', plan: '', periodo: '', page: 1, size: 10 },
       matriculas: { search: '', plan: '', periodo: '', estado: 'ACTIVA', page: 1, size: 10 },
@@ -84,6 +85,22 @@ window.app = function () {
               && (!f.tipo || (f.tipo === 'comun' ? !c.grupo_electivo : c.grupo_electivo === Number(f.tipo)))
               && matches([c.codigo, c.nombre, this.nameOf(this.data.planes, c.plan_id)]))
             .slice().sort((a, b) => a.ciclo - b.ciclo || a.codigo.localeCompare(b.codigo, 'es'));
+        case 'requisitos':
+          return this.data.requisitos.filter(r => {
+            const c = this.course(r.curso_id);
+            const required = this.course(r.requisito_id);
+            return c && required && (!plan || c.plan_id === plan)
+              && (!f.ciclo || c.ciclo === Number(f.ciclo))
+              && matches([c.codigo, c.nombre, required.codigo, required.nombre]);
+          }).sort((a, b) => {
+            const ca = this.course(a.curso_id);
+            const cb = this.course(b.curso_id);
+            return this.nameOf(this.data.planes, ca.plan_id)
+              .localeCompare(this.nameOf(this.data.planes, cb.plan_id), 'es')
+              || ca.ciclo - cb.ciclo
+              || ca.codigo.localeCompare(cb.codigo, 'es')
+              || this.course(a.requisito_id).codigo.localeCompare(this.course(b.requisito_id).codigo, 'es');
+          });
         case 'perfiles':
           return this.data.perfiles.filter(p => {
             if (f.rol && p.rol !== f.rol) return false;
