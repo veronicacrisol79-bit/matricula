@@ -19,15 +19,15 @@ Usuario → index.html + Alpine.js → app.js → Supabase
 
 ## 2. Vocabulario antes de mostrar código
 
-| Término | Significado | Ejemplo DEMO |
-| --- | --- | --- |
-| Plan de estudios | Lista de cursos de una carrera y año | Plan DEMO de Ingeniería de Sistemas (2026) |
-| Curso | Asignatura dentro de un plan | DEM-INF101: Introducción a la Programación |
-| Prerrequisito | Curso que debe aprobarse antes de otro | DEM-INF101 antes de DEM-INF201 |
-| Periodo | Semestre en el que se abren grupos | DEMO-2026-II |
-| Sección | Grupo de un curso con horario, docente y vacantes | DEM-INF101, sección A, martes 08:00 |
-| Matrícula | Inscripción de un estudiante en una sección | Estudiante inscrito en DEM-INF101 A |
-| Rol | Permisos de una cuenta | Administrador, Dirección o Estudiante |
+| Término         | Significado                                       | Ejemplo DEMO                                 |
+| ---------------- | ------------------------------------------------- | -------------------------------------------- |
+| Plan de estudios | Lista de cursos de una carrera y año             | Plan DEMO de Ingeniería de Sistemas (2026)  |
+| Curso            | Asignatura dentro de un plan                      | DEM-INF101: Introducción a la Programación |
+| Prerrequisito    | Curso que debe aprobarse antes de otro            | DEM-INF101 antes de DEM-INF201               |
+| Periodo          | Semestre en el que se abren grupos                | DEMO-2026-II                                 |
+| Sección         | Grupo de un curso con horario, docente y vacantes | DEM-INF101, sección A, martes 08:00         |
+| Matrícula       | Inscripción de un estudiante en una sección     | Estudiante inscrito en DEM-INF101 A          |
+| Rol              | Permisos de una cuenta                            | Administrador, Dirección o Estudiante       |
 
 **Curso y sección no son iguales.** Un curso pertenece a la malla; una sección es una forma concreta de dictarlo durante un periodo. La pestaña **Cursos disponibles** muestra secciones publicadas.
 
@@ -41,17 +41,17 @@ La pantalla tiene tres situaciones principales: inicio de sesión; cambio obliga
 
 Algunas instrucciones de Alpine que conviene mostrar en clase:
 
-| Instrucción | Qué hace en palabras sencillas |
-| --- | --- |
-| `x-data="app()"` | Conecta el HTML con los datos y funciones de `app.js`. |
-| `x-init="init()"` | Recupera la sesión al abrir la página. |
-| `x-model="auth.email"` | Guarda lo escrito en un campo dentro del estado. |
-| `x-show="tab === 'malla'"` | Muestra u oculta una parte de la página. |
-| `x-if="user && profile"` | Crea una parte de la pantalla solo cuando corresponde. |
-| `x-for="c in data.cursos"` | Repite una fila por cada curso. |
-| `x-text="c.nombre"` | Coloca un dato como texto visible. |
+| Instrucción                  | Qué hace en palabras sencillas                                       |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `x-data="app()"`            | Conecta el HTML con los datos y funciones de`app.js`.               |
+| `x-init="init()"`           | Recupera la sesión al abrir la página.                              |
+| `x-model="auth.email"`      | Guarda lo escrito en un campo dentro del estado.                      |
+| `x-show="tab === 'malla'"`  | Muestra u oculta una parte de la página.                             |
+| `x-if="user && profile"`    | Crea una parte de la pantalla solo cuando corresponde.                |
+| `x-for="c in data.cursos"`  | Repite una fila por cada curso.                                       |
+| `x-text="c.nombre"`         | Coloca un dato como texto visible.                                    |
 | `@submit.prevent="login()"` | Ejecuta una función al enviar un formulario sin recargar la página. |
-| `:disabled="busy"` | Desactiva un botón mientras se procesa una acción. |
+| `:disabled="busy"`          | Desactiva un botón mientras se procesa una acción.                  |
 
 **Por qué existe este archivo:** separa la estructura visual de las reglas y evita crear una página distinta para cada pestaña.
 
@@ -71,16 +71,16 @@ Indica la URL del proyecto Supabase y su clave **publishable**. El navegador nec
 
 La función `app()` crea un objeto con datos, estado y acciones. Los grupos más importantes son:
 
-| Grupo | Funciones o variables | Explicación |
-| --- | --- | --- |
-| Estado | `user`, `profile`, `tab`, `data`, `form`, `busy`, `message`, `error` | Recuerdan quién está conectado, qué pestaña se ve y qué datos llegaron. |
-| Datos calculados | `role`, `activePeriod`, `myPlan`, `myCourses`, `offers`, `myEnrollments`, `enrolledCredits` | Obtienen información útil a partir de los datos cargados. `offers` filtra las secciones publicadas del periodo y plan del estudiante. |
-| Ayudas visuales | `nameOf`, `course`, `section`, `day`, `remaining`, `requirements` | Transforman IDs y números en textos como nombres, días y vacantes. |
-| Sesión | `init`, `enter`, `login`, `logout` | Recuperan la sesión, leen el perfil y permiten entrar o salir. |
-| Cuentas | `createStudent`, `changePassword` | Llaman a la Edge Function para crear un estudiante o sustituir su contraseña temporal. |
-| Lectura | `refresh` | Lee las tablas en paralelo y consulta la función `cupos`; RLS decide qué filas puede ver cada usuario. |
-| Escritura simple | `save`, `update`, `addPlan`, `addCourse`, `savePlanChanges`, `saveCourseChanges`, `savePeriodChanges`, `saveTeacherChanges`, `saveSectionChanges`, `saveGradeChanges` | Crean o corrigen registros y luego actualizan la pantalla. |
-| Operaciones con reglas | `rpc`, `activatePeriod`, `enroll`, `withdraw` | Invocan funciones SQL para operaciones que requieren comprobaciones y transacciones. |
+| Grupo                  | Funciones o variables                                                                                                                                                                     | Explicación                                                                                                                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Estado                 | `user`, `profile`, `tab`, `data`, `form`, `busy`, `message`, `error`                                                                                                      | Recuerdan quién está conectado, qué pestaña se ve y qué datos llegaron.                                                             |
+| Datos calculados       | `role`, `activePeriod`, `myPlan`, `myCourses`, `offers`, `myEnrollments`, `enrolledCredits`                                                                                 | Obtienen información útil a partir de los datos cargados.`offers` filtra las secciones publicadas del periodo y plan del estudiante. |
+| Ayudas visuales        | `nameOf`, `course`, `section`, `day`, `remaining`, `requirements`                                                                                                             | Transforman IDs y números en textos como nombres, días y vacantes.                                                                     |
+| Sesión                | `init`, `enter`, `login`, `logout`                                                                                                                                                | Recuperan la sesión, leen el perfil y permiten entrar o salir.                                                                          |
+| Cuentas                | `createStudent`, `changePassword`                                                                                                                                                     | Llaman a la Edge Function para crear un estudiante o sustituir su contraseña temporal.                                                  |
+| Lectura                | `refresh`                                                                                                                                                                               | Lee las tablas en paralelo y consulta la función`cupos`; RLS decide qué filas puede ver cada usuario.                                |
+| Escritura simple       | `save`, `update`, `addPlan`, `addCourse`, `savePlanChanges`, `saveCourseChanges`, `savePeriodChanges`, `saveTeacherChanges`, `saveSectionChanges`, `saveGradeChanges` | Crean o corrigen registros y luego actualizan la pantalla.                                                                               |
+| Operaciones con reglas | `rpc`, `activatePeriod`, `enroll`, `withdraw`                                                                                                                                     | Invocan funciones SQL para operaciones que requieren comprobaciones y transacciones.                                                     |
 
 Ejemplo: al pulsar **Matricularme**, el HTML llama a `enroll(s.id)`. `app.js` llama a la función SQL `inscribir` y, si todo sale bien, ejecuta `refresh()` para mostrar la matrícula actualizada.
 
@@ -90,17 +90,17 @@ Ejemplo: al pulsar **Matricularme**, el HTML llama a `enroll(s.id)`. `app.js` ll
 
 Es el esquema de PostgreSQL para una base nueva. Las nueve tablas son:
 
-| Tabla | Guarda | Relación principal |
-| --- | --- | --- |
-| `planes` | Nombre y año de la malla | Tiene muchos cursos. |
-| `cursos` | Código, nombre, ciclo y créditos | Pertenece a un plan. |
-| `prerrequisitos` | Pares de cursos | Une un curso con otro anterior del mismo plan. |
-| `perfiles` | Nombre, código, rol, plan y estado de contraseña | Su `id` corresponde a un usuario de Supabase Auth. |
-| `periodos` | Semestres y límite de créditos | Solo uno puede estar activo. |
-| `docentes` | Datos del profesorado | Se asignan a secciones. |
-| `secciones` | Horario, aula, vacantes y publicación | Une periodo, curso y docente. |
-| `notas` | Calificación de un estudiante en un curso | Permite saber si aprobó un prerrequisito. |
-| `matriculas` | Inscripciones y retiros | Une estudiante y sección. |
+| Tabla              | Guarda                                             | Relación principal                                 |
+| ------------------ | -------------------------------------------------- | --------------------------------------------------- |
+| `planes`         | Nombre y año de la malla                          | Tiene muchos cursos.                                |
+| `cursos`         | Código, nombre, ciclo y créditos                 | Pertenece a un plan.                                |
+| `prerrequisitos` | Pares de cursos                                    | Une un curso con otro anterior del mismo plan.      |
+| `perfiles`       | Nombre, código, rol, plan y estado de contraseña | Su`id` corresponde a un usuario de Supabase Auth. |
+| `periodos`       | Semestres y límite de créditos                   | Solo uno puede estar activo.                        |
+| `docentes`       | Datos del profesorado                              | Se asignan a secciones.                             |
+| `secciones`      | Horario, aula, vacantes y publicación             | Une periodo, curso y docente.                       |
+| `notas`          | Calificación de un estudiante en un curso         | Permite saber si aprobó un prerrequisito.          |
+| `matriculas`     | Inscripciones y retiros                            | Une estudiante y sección.                          |
 
 Las **claves foráneas** impiden referencias a datos inexistentes. Las restricciones `unique` y `check` impiden duplicados y valores fuera de rango. Por ejemplo, una sección exige `inicio < fin` y vacantes entre 1 y 500.
 
@@ -108,16 +108,16 @@ El esquema también activa **RLS** (seguridad por filas). El administrador edita
 
 Funciones SQL que debes conocer:
 
-| Función | Para qué sirve |
-| --- | --- |
-| `crear_perfil` | Crea el perfil cuando Auth crea un usuario. |
-| `validar_prerrequisito` | Rechaza un requisito de otro plan o de un ciclo no anterior. |
-| `tiene_rol` / `es_personal` | Apoyan las políticas RLS según la cuenta conectada. |
-| `exigir_clave_definitiva` | Impide modificar matrículas con contraseña temporal. |
-| `activar_periodo` | Desactiva el periodo anterior y activa el elegido. |
-| `cupos` | Cuenta matrículas activas sin revelar la identidad de otros estudiantes. |
-| `inscribir` | Valida y guarda una matrícula. |
-| `retirar` | Marca una matrícula activa como retirada. |
+| Función                        | Para qué sirve                                                           |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `crear_perfil`                | Crea el perfil cuando Auth crea un usuario.                               |
+| `validar_prerrequisito`       | Rechaza un requisito de otro plan o de un ciclo no anterior.              |
+| `tiene_rol` / `es_personal` | Apoyan las políticas RLS según la cuenta conectada.                     |
+| `exigir_clave_definitiva`     | Impide modificar matrículas con contraseña temporal.                    |
+| `activar_periodo`             | Desactiva el periodo anterior y activa el elegido.                        |
+| `cupos`                       | Cuenta matrículas activas sin revelar la identidad de otros estudiantes. |
+| `inscribir`                   | Valida y guarda una matrícula.                                           |
+| `retirar`                     | Marca una matrícula activa como retirada.                                |
 
 `inscribir` comprueba, en este orden, que la persona sea estudiante; que la sección esté publicada en un periodo activo; que el curso pertenezca a su plan; que no lo haya aprobado; que cumpla los prerrequisitos; que no esté duplicado; que queden vacantes; que no se cruce el horario; y que no exceda los créditos. Usa bloqueos para que dos solicitudes simultáneas no ocupen la última vacante. Si una comprobación falla, la operación completa se revierte.
 

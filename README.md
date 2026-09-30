@@ -48,7 +48,7 @@ El sitio no necesita servidor Node.js ni variables de entorno en Render. Cuando 
 
 El proyecto actual `anfishncoxydlojunwvf` ya tiene los datos ficticios de [`datos-demo.sql`](datos-demo.sql): un plan DEMO, cinco cursos, dos prerrequisitos, un periodo activo, dos docentes y cinco secciones publicadas. **No es la malla oficial de la UNFV.** El archivo puede ejecutarse de nuevo sin duplicar esos registros. No crea cuentas, notas ni matrículas.
 
-1. Administrador crea el plan y sus cursos. Los códigos, créditos y requisitos deben verificarse con el plan curricular oficial antes de publicarlo. Los PDF proporcionados no se han convertido automáticamente en datos.
+1. Para cargar la malla 2019 del PDF proporcionado, ejecuta primero [`migracion-electivos-2019.sql`](migracion-electivos-2019.sql) y después [`plan-2019-sistemas.sql`](plan-2019-sistemas.sql) en el SQL Editor de Supabase. El archivo incluye 82 cursos, 68 prerrequisitos y tres grupos de cinco opciones electivas. Cada estudiante elige una opción por grupo; el administrador asigna el plan al estudiante. El archivo DEMO sigue separado y no se mezcla con el plan 2019.
 2. Administrador crea un periodo activo y asigna un plan a cada estudiante.
 3. Dirección crea docentes y secciones y las publica.
 4. Administrador registra notas aprobatorias de periodos anteriores cuando hay prerrequisitos.
